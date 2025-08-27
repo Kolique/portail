@@ -40,7 +40,7 @@ Cette application vous permet de nettoyer vos fichiers CSV de relevés de compte
 1.  **Chargez** votre fichier CSV.
 2.  L'application supprime les doublons de la colonne **"N° compteur"**.
 3.  Pour chaque compteur, elle conserve **uniquement la ligne la plus récente** (basée sur la colonne "Date") qui possède une valeur dans la colonne **"Index"**.
-4.  **Téléchargez** le fichier propre au format **Excel (.xlsx)** !
+4.  **Téléchargez** le fichier propre au format **CSV** !
 """)
 
 uploaded_file = st.file_uploader("Choisissez un fichier CSV", type="csv")
@@ -64,20 +64,17 @@ if uploaded_file is not None:
             st.metric(label="Lignes dans le fichier original", value=f"{len(df_original)}")
             st.metric(label="Lignes après nettoyage", value=f"{len(df_cleaned)}")
 
-            # --- NOUVELLE SECTION DE TÉLÉCHARGEMENT AU FORMAT XLSX ---
-            # Conversion du dataframe en fichier Excel en mémoire
-            output = io.BytesIO()
-            with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                df_cleaned.to_excel(writer, index=False, sheet_name='Donnees_Nettoyees')
-            
-            # Récupération des données binaires du fichier Excel
-            excel_bytes = output.getvalue()
+            # --- SECTION DE TÉLÉCHARGEMENT REMISE AU FORMAT CSV ---
+            # Conversion du dataframe en CSV pour le téléchargement
+            csv_buffer = io.StringIO()
+            df_cleaned.to_csv(csv_buffer, index=False, sep=';')
+            csv_bytes = csv_buffer.getvalue().encode('utf-8')
 
             st.download_button(
-                label="📥 Télécharger le fichier nettoyé (Excel)",
-                data=excel_bytes,
-                file_name="donnees_compteurs_nettoyees.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                label="📥 Télécharger le fichier nettoyé (CSV)",
+                data=csv_bytes,
+                file_name="donnees_compteurs_nettoyees.csv",
+                mime="text/csv",
             )
             # --- FIN DE LA MODIFICATION ---
 
