@@ -3,7 +3,7 @@ import pandas as pd
 import io
 
 # =============================================================================
-# FONCTION POUR L'ONGLET 1 : Nettoyeur de Fichier
+# FONCTION POUR L'APP 1 : Nettoyeur de Fichier
 # =============================================================================
 def process_data(df: pd.DataFrame) -> pd.DataFrame:
     """Nettoie le DataFrame en gardant la ligne la plus récente pour chaque 
@@ -25,48 +25,49 @@ def process_data(df: pd.DataFrame) -> pd.DataFrame:
     return df_final
 
 # =============================================================================
-# FONCTION POUR L'ONGLET 2 : Comparateur de Fichiers
+# FONCTION POUR L'APP 2 : Comparateur de Fichiers
 # =============================================================================
 def compare_files(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
     """Compare deux DataFrames et retourne les lignes de df1 dont le 'N° compteur' 
     n'est pas dans df2."""
-    # Vérification que la colonne 'N° compteur' existe dans les deux fichiers
     if 'N° compteur' not in df1.columns or 'N° compteur' not in df2.columns:
         st.error("La colonne 'N° compteur' doit être présente dans les deux fichiers.")
         return pd.DataFrame()
     
-    # Utilisation des 'set' pour une comparaison très rapide
     ids_in_df1 = set(df1['N° compteur'])
     ids_in_df2 = set(df2['N° compteur'])
-    
-    # Trouver les IDs qui sont dans le premier set mais pas dans le second
     missing_ids = ids_in_df1 - ids_in_df2
-    
-    # Filtrer le dataframe original (df1) pour ne garder que les lignes avec les IDs manquants
     result_df = df1[df1['N° compteur'].isin(missing_ids)].copy()
     
     return result_df
 
 # =============================================================================
-# Interface utilisateur principale avec les onglets
+# Interface utilisateur principale
 # =============================================================================
 st.set_page_config(page_title="Outils CSV Compteurs", layout="wide")
 
-st.title("Boîte à Outils CSV pour Compteurs ⚙️")
+# --- NAVIGATION DANS LA BARRE LATERALE ---
+st.sidebar.title("Navigation")
+page = st.sidebar.radio("Choisissez une application", [" सफाई CSV (Nettoyeur)", "🔄 Comparateur"])
 
-# --- Création des onglets ---
-tab1, tab2 = st.tabs([" सफाई CSV (Nettoyeur de Fichier)", "🔄 Comparateur de Fichiers"])
+# --- AFFICHAGE DE LA PAGE SÉLECTIONNÉE ---
 
-# --- CONTENU DE L'ONGLET 1 : NETTOYEUR DE FICHIER (CleanCSV) ---
-with tab1:
+if page == " सफाई CSV (Nettoyeur)":
+    st.title(" सफाई CSV - Nettoyeur de Fichier")
     st.header("Étape 1 : Charger votre fichier à nettoyer")
-    st.markdown("Cette application nettoie et dédoublonne un fichier de relevés de compteurs.")
+    st.markdown("""
+    Cette application nettoie et dédoublonne un fichier de relevés de compteurs.
+    1.  **Chargez** votre fichier CSV via le bouton ci-dessous.
+    2.  L'application supprime les doublons de la colonne **"N° compteur"**.
+    3.  Pour chaque compteur, elle conserve **uniquement la ligne la plus récente** (basée sur la colonne "Date") qui possède une valeur dans la colonne **"Index"**.
+    4.  Cliquez sur le bouton **"Nettoyer le fichier"** pour lancer le traitement.
+    """)
 
-    uploaded_file_clean = st.file_uploader("Choisissez un fichier CSV à nettoyer", type="csv", key="cleaner")
+    uploaded_file = st.file_uploader("Choisissez un fichier CSV", type="csv")
 
-    if uploaded_file_clean is not None:
+    if uploaded_file is not None:
         try:
-            df_original = pd.read_csv(uploaded_file_clean, sep=';')
+            df_original = pd.read_csv(uploaded_file, sep=';')
             st.subheader("Aperçu des données originales")
             st.dataframe(df_original.head())
 
@@ -75,12 +76,18 @@ with tab1:
                     df_cleaned = process_data(df_original)
                     st.session_state['cleaned_df'] = df_cleaned
                     st.session_state['original_rows'] = len(df_original)
-                st.success("Traitement terminé ! Les résultats sont prêts.")
-
+                st.success("Traitement terminé !")
+            
+            # Cette partie ne s'affiche que si les résultats existent en mémoire
             if 'cleaned_df' in st.session_state:
+                st.header("Étape 2 : Visualiser et télécharger")
                 df_cleaned_result = st.session_state['cleaned_df']
                 st.subheader("Données nettoyées")
                 st.dataframe(df_cleaned_result)
+
+                col1, col2 = st.columns(2)
+                col1.metric(label="Lignes dans le fichier original", value=st.session_state['original_rows'])
+                col2.metric(label="Lignes après nettoyage", value=len(df_cleaned_result))
                 
                 csv_buffer = io.StringIO()
                 df_cleaned_result.to_csv(csv_buffer, index=False, sep=';')
@@ -95,8 +102,8 @@ with tab1:
         except Exception as e:
             st.error(f"Une erreur est survenue : {e}")
 
-# --- CONTENU DE L'ONGLET 2 : COMPARATEUR DE FICHIERS ---
-with tab2:
+elif page == "🔄 Comparateur":
+    st.title("🔄 Comparateur de Fichiers")
     st.header("Trouver les compteurs manquants")
     st.markdown("""
     Cette application compare deux fichiers pour trouver les numéros de compteur qui sont dans le **Fichier 1** mais pas dans le **Fichier 2**.
@@ -126,7 +133,6 @@ with tab2:
                     st.subheader("Lignes des compteurs manquants (issues du Fichier 1)")
                     st.dataframe(missing_df)
 
-                    # Préparation du bouton de téléchargement
                     csv_buffer_missing = io.StringIO()
                     missing_df.to_csv(csv_buffer_missing, index=False, sep=';')
                     csv_bytes_missing = csv_buffer_missing.getvalue().encode('utf-8')
@@ -141,4 +147,4 @@ with tab2:
                     st.info("Bonne nouvelle ! Tous les compteurs du Fichier 1 sont présents dans le Fichier 2.")
             
             except Exception as e:
-                st.error(f"Une erreur est survenue lors de la lecture ou du traitement des fichiers : {e}")
+                st.error(f"Une erreur est survenue : {e}")
