@@ -48,15 +48,15 @@ st.set_page_config(page_title="Outils CSV Compteurs", layout="wide")
 
 # --- NAVIGATION DANS LA BARRE LATERALE ---
 st.sidebar.title("Navigation")
-page = st.sidebar.radio("Choisissez une application", [" सफाई CSV (Nettoyeur)", "🔄 Comparateur"])
+page = st.sidebar.radio("Choisissez une application", ["Suppresion doublons ", "Comparaison"])
 
 # --- AFFICHAGE DE LA PAGE SÉLECTIONNÉE ---
 
-if page == " सफाई CSV (Nettoyeur)":
-    st.title(" सफाई CSV - Nettoyeur de Fichier")
+if page == "Suppresion doublons":
+    st.title("Suppresion doublons")
     st.header("Étape 1 : Charger votre fichier à nettoyer")
     st.markdown("""
-    Cette application nettoie et dédoublonne un fichier de relevés de compteurs.
+    Cette application supprime les doubons et garde que les plus récent.
     1.  **Chargez** votre fichier CSV via le bouton ci-dessous.
     2.  L'application supprime les doublons de la colonne **"N° compteur"**.
     3.  Pour chaque compteur, elle conserve **uniquement la ligne la plus récente** (basée sur la colonne "Date") qui possède une valeur dans la colonne **"Index"**.
@@ -102,8 +102,8 @@ if page == " सफाई CSV (Nettoyeur)":
         except Exception as e:
             st.error(f"Une erreur est survenue : {e}")
 
-elif page == "🔄 Comparateur":
-    st.title("🔄 Comparateur de Fichiers")
+elif page == "Comparaison":
+    st.title("Comparaison")
     st.header("Trouver les compteurs manquants")
     st.markdown("""
     Cette application compare deux fichiers pour trouver les numéros de compteur qui sont dans le **Fichier 1** mais pas dans le **Fichier 2**.
