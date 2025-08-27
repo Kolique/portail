@@ -46,15 +46,19 @@ def compare_files(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
 # =============================================================================
 st.set_page_config(page_title="Outils CSV Compteurs", layout="wide")
 
-# --- NAVIGATION DANS LA BARRE LATERALE ---
-st.sidebar.title("Navigation")
-# L'erreur était ici : l'espace à la fin de "Suppresion doublons " a été retiré.
-page = st.sidebar.radio("Choisissez une application", ["Suppresion doublons", "Comparaison"])
+# --- NAVIGATION AMÉLIORÉE DANS LA BARRE LATERALE ---
+st.sidebar.title("Boîte à Outils CSV ⚙️")
+st.sidebar.markdown("---") # Ajoute une ligne de séparation
+
+page = st.sidebar.radio(
+    "Choisissez une application :", 
+    ["🧹 Suppresion doublons", "🔄 Comparaison"]
+)
 
 # --- AFFICHAGE DE LA PAGE SÉLECTIONNÉE ---
 
-if page == "Suppresion doublons":
-    st.title("Suppresion doublons")
+if page == "🧹 Suppresion doublons":
+    st.title("🧹 Suppresion doublons")
     st.header("Étape 1 : Charger votre fichier à nettoyer")
     st.markdown("""
     Cette application supprime les doubons et garde que les plus récent.
@@ -68,7 +72,7 @@ if page == "Suppresion doublons":
 
     if uploaded_file is not None:
         try:
-            df_original = pd.read_csv(uploaded_file, sep=';')
+            df_original = pd.read_csv(uploaded_file, sep=';', dtype={'Réf. abonné': str})
             st.subheader("Aperçu des données originales")
             st.dataframe(df_original.head())
 
@@ -79,7 +83,6 @@ if page == "Suppresion doublons":
                     st.session_state['original_rows'] = len(df_original)
                 st.success("Traitement terminé !")
             
-            # Cette partie ne s'affiche que si les résultats existent en mémoire
             if 'cleaned_df' in st.session_state:
                 st.header("Étape 2 : Visualiser et télécharger")
                 df_cleaned_result = st.session_state['cleaned_df']
@@ -103,8 +106,8 @@ if page == "Suppresion doublons":
         except Exception as e:
             st.error(f"Une erreur est survenue : {e}")
 
-elif page == "Comparaison":
-    st.title("Comparaison")
+elif page == "🔄 Comparaison":
+    st.title("🔄 Comparaison")
     st.header("Trouver les compteurs manquants")
     st.markdown("""
     Cette application compare deux fichiers pour trouver les numéros de compteur qui sont dans le **Fichier 1** mais pas dans le **Fichier 2**.
@@ -122,8 +125,8 @@ elif page == "Comparaison":
     if uploaded_file_1 and uploaded_file_2:
         if st.button("Comparer les fichiers", type="primary"):
             try:
-                df1 = pd.read_csv(uploaded_file_1, sep=';')
-                df2 = pd.read_csv(uploaded_file_2, sep=';')
+                df1 = pd.read_csv(uploaded_file_1, sep=';', dtype={'Réf. abonné': str})
+                df2 = pd.read_csv(uploaded_file_2, sep=';', dtype={'Réf. abonné': str})
 
                 with st.spinner("Comparaison en cours..."):
                     missing_df = compare_files(df1, df2)
