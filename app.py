@@ -48,7 +48,8 @@ st.set_page_config(page_title="Outils CSV Compteurs", layout="wide")
 
 # --- NAVIGATION DANS LA BARRE LATERALE ---
 st.sidebar.title("Navigation")
-page = st.sidebar.radio("Choisissez une application", ["Suppresion doublons ", "Comparaison"])
+# L'erreur était ici : l'espace à la fin de "Suppresion doublons " a été retiré.
+page = st.sidebar.radio("Choisissez une application", ["Suppresion doublons", "Comparaison"])
 
 # --- AFFICHAGE DE LA PAGE SÉLECTIONNÉE ---
 
