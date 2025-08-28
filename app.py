@@ -2,6 +2,34 @@ import streamlit as st
 import pandas as pd
 import io
 
+# --- Fonctions pour les outils ---
+
+# NOUVELLE FONCTION : Outil pour ajouter les diamètres
+def ajouter_diametres(df_extraction, df_diametres):
+    # On vérifie que les colonnes nécessaires sont bien là
+    if "N° compteur" not in df_extraction.columns:
+        st.error("Le fichier d'extraction doit avoir une colonne 'N° compteur'.")
+        return pd.DataFrame()
+    if "Numéro de compteur" not in df_diametres.columns or "Diametre" not in df_diametres.columns:
+        st.error("Le fichier des diamètres doit avoir les colonnes 'Numéro de compteur' et 'Diametre'.")
+        return pd.DataFrame()
+
+    # On fusionne les deux fichiers. 'how="left"' garantit qu'on garde toutes les lignes du premier fichier.
+    # left_on et right_on permettent de faire le lien entre les deux colonnes qui n'ont pas le même nom.
+    df_fusionne = pd.merge(
+        df_extraction, 
+        df_diametres[['Numéro de compteur', 'Diametre']], 
+        left_on='N° compteur', 
+        right_on='Numéro de compteur', 
+        how='left'
+    )
+    
+    # On peut supprimer la colonne 'Numéro de compteur' qui est en double après la fusion
+    df_fusionne = df_fusionne.drop(columns=['Numéro de compteur'])
+    
+    return df_fusionne
+
+# Fonction pour l'outil de nettoyage de doublons
 def nettoyer_fichier(df):
     colonnes_requises = ["N° compteur", "Date", "Index"]
     if not all(col in df.columns for col in colonnes_requises):
@@ -13,13 +41,12 @@ def nettoyer_fichier(df):
     df.dropna(subset=['Date'], inplace=True)
     
     df_trie = df.sort_values(by=["N° compteur", "Date"], ascending=[True, False])
-    
     df_filtre = df_trie[pd.notna(df_trie['Index']) & (df_trie['Index'].astype(str).str.strip() != '')]
-    
     df_final = df_filtre.drop_duplicates(subset="N° compteur", keep="first")
     
     return df_final
 
+# Fonction pour l'outil de comparaison
 def comparer_fichiers(df1, df2):
     if 'N° compteur' not in df1.columns or 'N° compteur' not in df2.columns:
         st.error("La colonne 'N° compteur' doit exister dans les deux fichiers.")
@@ -27,21 +54,68 @@ def comparer_fichiers(df1, df2):
     
     compteurs_f1 = set(df1['N° compteur'])
     compteurs_f2 = set(df2['N° compteur'])
-    
     compteurs_manquants = compteurs_f1 - compteurs_f2
-    
     resultat = df1[df1['N° compteur'].isin(compteurs_manquants)].copy()
     
     return resultat
 
+# --- Interface de l'application ---
+
 st.set_page_config(page_title="Outils CSV", layout="wide")
 
+# Barre de navigation à gauche
 st.sidebar.title("Navigation")
-page = st.sidebar.radio("Choisis un outil :", ["Nettoyage Doublons", "Comparaison Fichiers"])
+page = st.sidebar.radio("Choisis un outil :", ["Ajout Diamètre", "Nettoyage Doublons", "Comparaison Fichiers"])
 
-if page == "Nettoyage Doublons":
+# Page 1 : Ajout de diamètre
+if page == "Ajout Diamètre":
+    st.title("Outil d'Ajout de Diamètre")
+    st.header("Enrichir un fichier avec les diamètres d'un autre")
+    st.markdown("""
+    Cet outil ajoute la colonne "Diametre" à un fichier d'extraction à partir d'un second fichier.
+    1.  Chargez le fichier principal (**Fichier 1 : Extraction**).
+    2.  Chargez le fichier contenant les diamètres (**Fichier 2 : Diamètres**).
+    3.  L'outil va trouver les correspondances entre "N° compteur" (Fichier 1) et "Numéro de compteur" (Fichier 2) pour ajouter le bon diamètre à chaque ligne.
+    """)
+
+    col1, col2 = st.columns(2)
+    fichier_extraction = col1.file_uploader("Fichier 1 (Extraction)", type="csv")
+    fichier_diametres = col2.file_uploader("Fichier 2 (Diamètres)", type="csv")
+
+    if fichier_extraction and fichier_diametres:
+        if st.button("Lancer l'ajout des diamètres", type="primary"):
+            try:
+                # On s'assure que les numéros de compteur sont lus comme du texte pour éviter les erreurs
+                dtype_spec = {'N° compteur': str, 'Numéro de compteur': str, 'Réf. abonné': str}
+                df1 = pd.read_csv(fichier_extraction, sep=';', dtype=dtype_spec)
+                df2 = pd.read_csv(fichier_diametres, sep=';', dtype=dtype_spec)
+
+                with st.spinner("Fusion en cours..."):
+                    df_final = ajouter_diametres(df1, df2)
+                
+                st.success("Opération terminée !")
+                st.subheader("Aperçu du fichier final avec les diamètres")
+                st.dataframe(df_final)
+
+                buffer = io.StringIO()
+                df_final.to_csv(buffer, index=False, sep=';')
+                csv_final = buffer.getvalue().encode('utf-8')
+
+                st.download_button(
+                    label="📥 Télécharger le fichier final (CSV)",
+                    data=csv_final,
+                    file_name="extraction_avec_diametres.csv",
+                    mime="text/csv",
+                )
+            
+            except Exception as e:
+                st.error(f"Oups, une erreur est survenue : {e}")
+
+
+# Page 2 : Nettoyage de doublons
+elif page == "Nettoyage Doublons":
     st.title("Outil de Nettoyage CSV")
-    st.header("Charger le fichier")
+    st.header("1. Charger le fichier")
     st.markdown("""
     Cet outil nettoie un fichier CSV de relevés pour ne garder que la ligne la plus récente et valide pour chaque compteur.
     - Il supprime les doublons de la colonne **"N° compteur"**.
@@ -53,7 +127,7 @@ if page == "Nettoyage Doublons":
 
     if fichier_charge is not None:
         try:
-            df_initial = pd.read_csv(fichier_charge, sep=';', dtype={'Réf. abonné': str})
+            df_initial = pd.read_csv(fichier_charge, sep=';', dtype={'Réf. abonné': str, 'N° compteur': str})
             st.subheader("Aperçu du fichier original")
             st.dataframe(df_initial.head())
 
@@ -86,6 +160,7 @@ if page == "Nettoyage Doublons":
         except Exception as e:
             st.error(f"Oups, une erreur est survenue : {e}")
 
+# Page 3 : Comparaison de fichiers
 elif page == "Comparaison Fichiers":
     st.title("Outil de Comparaison de Fichiers")
     st.header("Trouver les compteurs manquants")
@@ -103,8 +178,8 @@ elif page == "Comparaison Fichiers":
     if fichier1 and fichier2:
         if st.button("Comparer", type="primary"):
             try:
-                df1 = pd.read_csv(fichier1, sep=';', dtype={'Réf. abonné': str})
-                df2 = pd.read_csv(fichier2, sep=';', dtype={'Réf. abonné': str})
+                df1 = pd.read_csv(fichier1, sep=';', dtype={'Réf. abonné': str, 'N° compteur': str})
+                df2 = pd.read_csv(fichier2, sep=';', dtype={'Réf. abonné': str, 'N° compteur': str})
 
                 with st.spinner("Comparaison en cours..."):
                     df_manquants = comparer_fichiers(df1, df2)
