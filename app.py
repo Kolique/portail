@@ -54,7 +54,7 @@ page = st.sidebar.radio("Choisissez une application", ["Suppresion doublons", "C
 
 if page == "Suppresion doublons":
     st.title("Suppresion doublons")
-    st.header("Étape 1 : Charger votre fichier à nettoyer")
+    st.header("Charger votre fichier à nettoyer")
     st.markdown("""
     Cette application supprime les doubons et garde que les plus récent.
     1.  **Chargez** votre fichier CSV via le bouton ci-dessous.
