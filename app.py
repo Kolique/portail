@@ -2,60 +2,43 @@ import streamlit as st
 import pandas as pd
 import io
 
-#Fonction nettoyage
 def nettoyer_fichier(df):
-    
-    #Vérification si les colonnes réquise sont là
     colonnes_requises = ["N° compteur", "Date", "Index"]
     if not all(col in df.columns for col in colonnes_requises):
         cols_manquantes = [col for col in colonnes_requises if col not in df.columns]
         st.error(f"Erreur : il manque les colonnes suivantes : {', '.join(cols_manquantes)}")
-        return pd.DataFrame() 
+        return pd.DataFrame()
 
-    # Convertit la colonne Date au bon format
     df['Date'] = pd.to_datetime(df['Date'], errors='coerce', dayfirst=True)
     df.dropna(subset=['Date'], inplace=True)
     
-    #Trie par compteur puis par date
     df_trie = df.sort_values(by=["N° compteur", "Date"], ascending=[True, False])
     
-    #Garde juste les lignes ou Index n'est pas vide
     df_filtre = df_trie[pd.notna(df_trie['Index']) & (df_trie['Index'].astype(str).str.strip() != '')]
     
-    #Supprime les doublons 
     df_final = df_filtre.drop_duplicates(subset="N° compteur", keep="first")
     
     return df_final
 
-# Fonction comparaison
 def comparer_fichiers(df1, df2):
-
     if 'N° compteur' not in df1.columns or 'N° compteur' not in df2.columns:
         st.error("La colonne 'N° compteur' doit exister dans les deux fichiers.")
         return pd.DataFrame()
     
-    #Recupere les compteur des 2 fichier
     compteurs_f1 = set(df1['N° compteur'])
     compteurs_f2 = set(df2['N° compteur'])
     
-    # On trouve les compteur qui sont dans le 1er mais pas dans le 
     compteurs_manquants = compteurs_f1 - compteurs_f2
     
-    # On retourne les lignes complètes du premier fichier qui correspondent aux compteurs manquants
     resultat = df1[df1['N° compteur'].isin(compteurs_manquants)].copy()
     
     return resultat
 
-# --- Interface de l'application ---
-
 st.set_page_config(page_title="Outils CSV", layout="wide")
 
-# Barre de navigation à gauche
 st.sidebar.title("Navigation")
 page = st.sidebar.radio("Choisis un outil :", ["Nettoyage Doublons", "Comparaison Fichiers"])
 
-
-# Page 1 : Nettoyage de doublons
 if page == "Nettoyage Doublons":
     st.title("Outil de Nettoyage CSV")
     st.header("1. Charger le fichier")
@@ -86,12 +69,10 @@ if page == "Nettoyage Doublons":
                 resultat_nettoyage = st.session_state['df_nettoye']
                 st.dataframe(resultat_nettoyage)
 
-                # Affichage des stats
                 col1, col2 = st.columns(2)
                 col1.metric("Lignes avant", st.session_state['lignes_originales'])
                 col2.metric("Lignes après", len(resultat_nettoyage))
                 
-                # Bouton de téléchargement
                 buffer = io.StringIO()
                 resultat_nettoyage.to_csv(buffer, index=False, sep=';')
                 csv_final = buffer.getvalue().encode('utf-8')
@@ -105,11 +86,15 @@ if page == "Nettoyage Doublons":
         except Exception as e:
             st.error(f"Oups, une erreur est survenue : {e}")
 
-# Page 2 : Comparaison de fichiers
 elif page == "Comparaison Fichiers":
     st.title("Outil de Comparaison de Fichiers")
     st.header("Trouver les compteurs manquants")
-    st.markdown("Cet outil trouve les compteurs présents dans un **Fichier 1** mais absents d'un **Fichier 2**.")
+    st.markdown("""
+    Cet outil trouve les compteurs présents dans un **Fichier 1** mais absents d'un **Fichier 2**.
+    1.  Chargez le fichier de référence (**Fichier 1**).
+    2.  Chargez le fichier dans lequel vous voulez vérifier la présence des compteurs (**Fichier 2**).
+    3.  Cliquez sur "Comparer" pour obtenir la liste des manquants.
+    """)
 
     col1, col2 = st.columns(2)
     fichier1 = col1.file_uploader("Fichier 1 (de référence)", type="csv")
@@ -130,7 +115,6 @@ elif page == "Comparaison Fichiers":
                     st.subheader("Liste des compteurs manquants")
                     st.dataframe(df_manquants)
 
-                    # Bouton de téléchargement
                     buffer_comp = io.StringIO()
                     df_manquants.to_csv(buffer_comp, index=False, sep=';')
                     csv_comp = buffer_comp.getvalue().encode('utf-8')
