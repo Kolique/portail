@@ -41,7 +41,7 @@ page = st.sidebar.radio("Choisis un outil :", ["Nettoyage Doublons", "Comparaiso
 
 if page == "Nettoyage Doublons":
     st.title("Outil de Nettoyage CSV")
-    st.header("1. Charger le fichier")
+    st.header("Charger le fichier")
     st.markdown("""
     Cet outil nettoie un fichier CSV de relevés pour ne garder que la ligne la plus récente et valide pour chaque compteur.
     - Il supprime les doublons de la colonne **"N° compteur"**.
