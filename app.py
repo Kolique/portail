@@ -2,150 +2,147 @@ import streamlit as st
 import pandas as pd
 import io
 
-# =============================================================================
-# FONCTION POUR L'APP 1 : Nettoyeur de Fichier
-# =============================================================================
-def process_data(df: pd.DataFrame) -> pd.DataFrame:
-    """Nettoie le DataFrame en gardant la ligne la plus récente pour chaque 
-    compteur, en s'assurant que l'index n'est pas vide."""
-    df_copy = df.copy()
-    required_columns = ["N° compteur", "Date", "Index"]
-    if not all(col in df_copy.columns for col in required_columns):
-        missing_cols = [col for col in required_columns if col not in df_copy.columns]
-        st.error(f"Le fichier CSV pour le nettoyage doit contenir les colonnes : {', '.join(missing_cols)}")
-        return pd.DataFrame()
-
-    df_copy['Date'] = pd.to_datetime(df_copy['Date'], errors='coerce', dayfirst=True)
-    df_copy.dropna(subset=['Date'], inplace=True)
+# Fonction pour l'outil de nettoyage de doublons
+def nettoyer_fichier(df):
     
-    df_sorted = df_copy.sort_values(by=["N° compteur", "Date"], ascending=[True, False])
-    df_filtered = df_sorted[pd.notna(df_sorted['Index']) & (df_sorted['Index'].astype(str).str.strip() != '')]
-    df_final = df_filtered.drop_duplicates(subset="N° compteur", keep="first")
+    # On vérifie que les colonnes nécessaires sont bien là
+    colonnes_requises = ["N° compteur", "Date", "Index"]
+    if not all(col in df.columns for col in colonnes_requises):
+        cols_manquantes = [col for col in colonnes_requises if col not in df.columns]
+        st.error(f"Erreur : il manque les colonnes suivantes : {', '.join(cols_manquantes)}")
+        return pd.DataFrame() # On retourne un tableau vide si erreur
+
+    # On convertit la colonne 'Date' au bon format, sinon erreur
+    df['Date'] = pd.to_datetime(df['Date'], errors='coerce', dayfirst=True)
+    df.dropna(subset=['Date'], inplace=True)
+    
+    # On trie par compteur, puis par date (de la plus récente à la plus ancienne)
+    df_trie = df.sort_values(by=["N° compteur", "Date"], ascending=[True, False])
+    
+    # On garde seulement les lignes où l'index n'est pas vide
+    df_filtre = df_trie[pd.notna(df_trie['Index']) & (df_trie['Index'].astype(str).str.strip() != '')]
+    
+    # On supprime les doublons pour ne garder que la première ligne de chaque compteur (donc la plus récente et valide)
+    df_final = df_filtre.drop_duplicates(subset="N° compteur", keep="first")
     
     return df_final
 
-# =============================================================================
-# FONCTION POUR L'APP 2 : Comparateur de Fichiers
-# =============================================================================
-def compare_files(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
-    """Compare deux DataFrames et retourne les lignes de df1 dont le 'N° compteur' 
-    n'est pas dans df2."""
+# Fonction pour l'outil de comparaison
+def comparer_fichiers(df1, df2):
+
     if 'N° compteur' not in df1.columns or 'N° compteur' not in df2.columns:
-        st.error("La colonne 'N° compteur' doit être présente dans les deux fichiers.")
+        st.error("La colonne 'N° compteur' doit exister dans les deux fichiers.")
         return pd.DataFrame()
     
-    ids_in_df1 = set(df1['N° compteur'])
-    ids_in_df2 = set(df2['N° compteur'])
-    missing_ids = ids_in_df1 - ids_in_df2
-    result_df = df1[df1['N° compteur'].isin(missing_ids)].copy()
+    # On récupère les listes de compteurs de chaque fichier
+    compteurs_f1 = set(df1['N° compteur'])
+    compteurs_f2 = set(df2['N° compteur'])
     
-    return result_df
+    # On trouve les compteurs qui sont dans le premier fichier mais pas dans le deuxième
+    compteurs_manquants = compteurs_f1 - compteurs_f2
+    
+    # On retourne les lignes complètes du premier fichier qui correspondent aux compteurs manquants
+    resultat = df1[df1['N° compteur'].isin(compteurs_manquants)].copy()
+    
+    return resultat
 
-# =============================================================================
-# Interface utilisateur principale
-# =============================================================================
-st.set_page_config(page_title="Outils CSV Compteurs", layout="wide")
+# --- Interface de l'application ---
 
-# --- NAVIGATION DANS LA BARRE LATERALE ---
+st.set_page_config(page_title="Outils CSV", layout="wide")
+
+# Barre de navigation à gauche
 st.sidebar.title("Navigation")
-page = st.sidebar.radio("Choisissez une application", ["Suppresion doublons", "Comparaison"])
+page = st.sidebar.radio("Choisis un outil :", ["Nettoyage Doublons", "Comparaison Fichiers"])
 
-# --- AFFICHAGE DE LA PAGE SÉLECTIONNÉE ---
 
-if page == "Suppresion doublons":
-    st.title("Suppresion doublons")
-    st.header("Charger votre fichier à nettoyer")
+# Page 1 : Nettoyage de doublons
+if page == "Nettoyage Doublons":
+    st.title("Outil de Nettoyage CSV")
+    st.header("1. Charger le fichier")
     st.markdown("""
-    Cette application supprime les doubons et garde que les plus récent.
-    1.  **Chargez** votre fichier CSV via le bouton ci-dessous.
-    2.  L'application supprime les doublons de la colonne **"N° compteur"**.
-    3.  Pour chaque compteur, elle conserve **uniquement la ligne la plus récente** (basée sur la colonne "Date") qui possède une valeur dans la colonne **"Index"**.
-    4.  Cliquez sur le bouton **"Nettoyer le fichier"** pour lancer le traitement.
+    Cet outil nettoie un fichier CSV de relevés pour ne garder que la ligne la plus récente et valide pour chaque compteur.
+    - Il supprime les doublons de la colonne **"N° compteur"**.
+    - Il garde la ligne avec la **date la plus récente**.
+    - Il vérifie que la colonne **"Index"** de cette ligne n'est pas vide.
     """)
 
-    uploaded_file = st.file_uploader("Choisissez un fichier CSV", type="csv")
+    fichier_charge = st.file_uploader("Sélectionne un fichier CSV", type="csv")
 
-    if uploaded_file is not None:
+    if fichier_charge is not None:
         try:
-            # CORRECTION ICI : Le nom exact de la colonne est utilisé
-            df_original = pd.read_csv(uploaded_file, sep=';', dtype={'Réf. abonné': str})
-            st.subheader("Aperçu des données originales")
-            st.dataframe(df_original.head())
+            df_initial = pd.read_csv(fichier_charge, sep=';', dtype={'Réf. abonné': str})
+            st.subheader("Aperçu du fichier original")
+            st.dataframe(df_initial.head())
 
-            if st.button("Nettoyer le fichier", type="primary"):
-                with st.spinner("Traitement en cours..."):
-                    df_cleaned = process_data(df_original)
-                    st.session_state['cleaned_df'] = df_cleaned
-                    st.session_state['original_rows'] = len(df_original)
-                st.success("Traitement terminé !")
+            if st.button("Lancer le nettoyage", type="primary"):
+                with st.spinner("Nettoyage en cours..."):
+                    df_nettoye = nettoyer_fichier(df_initial)
+                    st.session_state['df_nettoye'] = df_nettoye
+                    st.session_state['lignes_originales'] = len(df_initial)
+                st.success("C'est terminé !")
             
-            if 'cleaned_df' in st.session_state:
-                st.header("Étape 2 : Visualiser et télécharger")
-                df_cleaned_result = st.session_state['cleaned_df']
-                st.subheader("Données nettoyées")
-                st.dataframe(df_cleaned_result)
+            if 'df_nettoye' in st.session_state:
+                st.header("2. Résultat")
+                resultat_nettoyage = st.session_state['df_nettoye']
+                st.dataframe(resultat_nettoyage)
 
+                # Affichage des stats
                 col1, col2 = st.columns(2)
-                col1.metric(label="Lignes dans le fichier original", value=st.session_state['original_rows'])
-                col2.metric(label="Lignes après nettoyage", value=len(df_cleaned_result))
+                col1.metric("Lignes avant", st.session_state['lignes_originales'])
+                col2.metric("Lignes après", len(resultat_nettoyage))
                 
-                csv_buffer = io.StringIO()
-                df_cleaned_result.to_csv(csv_buffer, index=False, sep=';')
-                csv_bytes = csv_buffer.getvalue().encode('utf-8')
+                # Bouton de téléchargement
+                buffer = io.StringIO()
+                resultat_nettoyage.to_csv(buffer, index=False, sep=';')
+                csv_final = buffer.getvalue().encode('utf-8')
 
                 st.download_button(
-                    label="📥 Télécharger le fichier nettoyé (CSV)",
-                    data=csv_bytes,
-                    file_name="donnees_compteurs_nettoyees.csv",
+                    label="📥 Télécharger le résultat (CSV)",
+                    data=csv_final,
+                    file_name="fichier_nettoye.csv",
                     mime="text/csv",
                 )
         except Exception as e:
-            st.error(f"Une erreur est survenue : {e}")
+            st.error(f"Oups, une erreur est survenue : {e}")
 
-elif page == "Comparaison":
-    st.title("Comparaison")
+# Page 2 : Comparaison de fichiers
+elif page == "Comparaison Fichiers":
+    st.title("Outil de Comparaison de Fichiers")
     st.header("Trouver les compteurs manquants")
-    st.markdown("""
-    Cette application compare deux fichiers pour trouver les numéros de compteur qui sont dans le **Fichier 1** mais pas dans le **Fichier 2**.
-    1.  Chargez le fichier de référence (**Fichier 1**).
-    2.  Chargez le fichier dans lequel vous voulez vérifier la présence des compteurs (**Fichier 2**).
-    3.  Cliquez sur "Comparer" pour obtenir la liste des manquants.
-    """)
+    st.markdown("Cet outil trouve les compteurs présents dans un **Fichier 1** mais absents d'un **Fichier 2**.")
 
     col1, col2 = st.columns(2)
-    with col1:
-        uploaded_file_1 = st.file_uploader("Fichier 1 (Référence)", type="csv", key="compare1")
-    with col2:
-        uploaded_file_2 = st.file_uploader("Fichier 2 (À vérifier)", type="csv", key="compare2")
+    fichier1 = col1.file_uploader("Fichier 1 (de référence)", type="csv")
+    fichier2 = col2.file_uploader("Fichier 2 (à comparer)", type="csv")
 
-    if uploaded_file_1 and uploaded_file_2:
-        if st.button("Comparer les fichiers", type="primary"):
+    if fichier1 and fichier2:
+        if st.button("Comparer", type="primary"):
             try:
-                # CORRECTION ICI pour les deux fichiers
-                df1 = pd.read_csv(uploaded_file_1, sep=';', dtype={'Réf. abonné': str})
-                df2 = pd.read_csv(uploaded_file_2, sep=';', dtype={'Réf. abonné': str})
+                df1 = pd.read_csv(fichier1, sep=';', dtype={'Réf. abonné': str})
+                df2 = pd.read_csv(fichier2, sep=';', dtype={'Réf. abonné': str})
 
                 with st.spinner("Comparaison en cours..."):
-                    missing_df = compare_files(df1, df2)
+                    df_manquants = comparer_fichiers(df1, df2)
                 
-                st.success(f"Comparaison terminée ! **{len(missing_df)}** compteur(s) du Fichier 1 sont manquants dans le Fichier 2.")
+                st.success(f"Analyse terminée : **{len(df_manquants)}** compteur(s) sont manquants.")
 
-                if not missing_df.empty:
-                    st.subheader("Lignes des compteurs manquants (issues du Fichier 1)")
-                    st.dataframe(missing_df)
+                if not df_manquants.empty:
+                    st.subheader("Liste des compteurs manquants")
+                    st.dataframe(df_manquants)
 
-                    csv_buffer_missing = io.StringIO()
-                    missing_df.to_csv(csv_buffer_missing, index=False, sep=';')
-                    csv_bytes_missing = csv_buffer_missing.getvalue().encode('utf-8')
+                    # Bouton de téléchargement
+                    buffer_comp = io.StringIO()
+                    df_manquants.to_csv(buffer_comp, index=False, sep=';')
+                    csv_comp = buffer_comp.getvalue().encode('utf-8')
 
                     st.download_button(
-                        label="📥 Télécharger la liste des manquants (CSV)",
-                        data=csv_bytes_missing,
+                        label="📥 Télécharger la liste (CSV)",
+                        data=csv_comp,
                         file_name="compteurs_manquants.csv",
                         mime="text/csv",
                     )
                 else:
-                    st.info("Bonne nouvelle ! Tous les compteurs du Fichier 1 sont présents dans le Fichier 2.")
+                    st.info("Bonne nouvelle, aucun compteur ne manque !")
             
             except Exception as e:
-                st.error(f"Une erreur est survenue : {e}")
+                st.error(f"Oups, une erreur est survenue : {e}")
