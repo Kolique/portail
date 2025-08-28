@@ -2,43 +2,43 @@ import streamlit as st
 import pandas as pd
 import io
 
-# Fonction pour l'outil de nettoyage de doublons
+#Fonction nettoyage
 def nettoyer_fichier(df):
     
-    # On vérifie que les colonnes nécessaires sont bien là
+    #Vérification si les colonnes réquise sont là
     colonnes_requises = ["N° compteur", "Date", "Index"]
     if not all(col in df.columns for col in colonnes_requises):
         cols_manquantes = [col for col in colonnes_requises if col not in df.columns]
         st.error(f"Erreur : il manque les colonnes suivantes : {', '.join(cols_manquantes)}")
-        return pd.DataFrame() # On retourne un tableau vide si erreur
+        return pd.DataFrame() 
 
-    # On convertit la colonne 'Date' au bon format, sinon erreur
+    # Convertit la colonne Date au bon format
     df['Date'] = pd.to_datetime(df['Date'], errors='coerce', dayfirst=True)
     df.dropna(subset=['Date'], inplace=True)
     
-    # On trie par compteur, puis par date (de la plus récente à la plus ancienne)
+    #Trie par compteur puis par date
     df_trie = df.sort_values(by=["N° compteur", "Date"], ascending=[True, False])
     
-    # On garde seulement les lignes où l'index n'est pas vide
+    #Garde juste les lignes ou Index n'est pas vide
     df_filtre = df_trie[pd.notna(df_trie['Index']) & (df_trie['Index'].astype(str).str.strip() != '')]
     
-    # On supprime les doublons pour ne garder que la première ligne de chaque compteur (donc la plus récente et valide)
+    #Supprime les doublons 
     df_final = df_filtre.drop_duplicates(subset="N° compteur", keep="first")
     
     return df_final
 
-# Fonction pour l'outil de comparaison
+# Fonction comparaison
 def comparer_fichiers(df1, df2):
 
     if 'N° compteur' not in df1.columns or 'N° compteur' not in df2.columns:
         st.error("La colonne 'N° compteur' doit exister dans les deux fichiers.")
         return pd.DataFrame()
     
-    # On récupère les listes de compteurs de chaque fichier
+    #Recupere les compteur des 2 fichier
     compteurs_f1 = set(df1['N° compteur'])
     compteurs_f2 = set(df2['N° compteur'])
     
-    # On trouve les compteurs qui sont dans le premier fichier mais pas dans le deuxième
+    # On trouve les compteur qui sont dans le 1er mais pas dans le 
     compteurs_manquants = compteurs_f1 - compteurs_f2
     
     # On retourne les lignes complètes du premier fichier qui correspondent aux compteurs manquants
