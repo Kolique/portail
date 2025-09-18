@@ -74,13 +74,13 @@ if page == "Ajout Diamètre":
     st.markdown("""
     Cet outil ajoute la colonne "Diametre" à un fichier d'extraction à partir d'un second fichier.
     1.  Chargez le fichier principal (**Fichier 1 : Extraction en CSV**).
-    2.  Chargez le fichier contenant les diamètres (**Fichier 2 : Diamètres en CSV**).
+    2.  Chargez le fichier contenant les diamètres (**Fichier 2 : Diamètres en CSV ou XLSX**).
     3.  L'outil va trouver les correspondances entre "N° compteur" (Fichier 1) et "Numéro de compteur" (Fichier 2) pour ajouter le bon diamètre à chaque ligne.
     """)
 
     col1, col2 = st.columns(2)
     fichier_extraction = col1.file_uploader("Fichier 1 (Extraction)", type="csv")
-    fichier_diametres = col2.file_uploader("Fichier 2 (Diamètres)", type="csv")
+    fichier_diametres = col2.file_uploader("Fichier 2 (Diamètres)", type=["csv", "xlsx"])
 
     if fichier_extraction and fichier_diametres:
         if st.button("Lancer l'ajout des diamètres", type="primary"):
@@ -88,8 +88,12 @@ if page == "Ajout Diamètre":
                 # On s'assure que les numéros de compteur sont lus comme du texte pour éviter les erreurs
                 dtype_spec = {'N° compteur': str, 'Numéro de compteur': str, 'Réf. abonné': str}
                 df1 = pd.read_csv(fichier_extraction, sep=';', dtype=dtype_spec)
-                # On lit maintenant un fichier CSV
-                df2 = pd.read_csv(fichier_diametres, sep=';', dtype=dtype_spec)
+                
+                # On vérifie le type du fichier des diamètres pour le lire correctement
+                if fichier_diametres.name.endswith('.csv'):
+                    df2 = pd.read_csv(fichier_diametres, sep=';', dtype=dtype_spec)
+                else: # .xlsx
+                    df2 = pd.read_excel(fichier_diametres, dtype=dtype_spec, engine='openpyxl')
 
                 with st.spinner("Fusion en cours..."):
                     df_final = ajouter_diametres(df1, df2)
