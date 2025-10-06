@@ -4,7 +4,6 @@ import io
 
 # --- Fonctions pour les outils ---
 
-# NOUVELLE FONCTION : Outil pour ajouter les diamètres
 def ajouter_diametres(df_extraction, df_diametres):
     # On vérifie que les colonnes nécessaires sont bien là
     if "N° compteur" not in df_extraction.columns:
@@ -14,8 +13,6 @@ def ajouter_diametres(df_extraction, df_diametres):
         st.error("Le fichier des diamètres doit avoir les colonnes 'Numéro de compteur' et 'Diametre'.")
         return pd.DataFrame()
 
-    # On fusionne les deux fichiers. 'how="left"' garantit qu'on garde toutes les lignes du premier fichier.
-    # left_on et right_on permettent de faire le lien entre les deux colonnes qui n'ont pas le même nom.
     df_fusionne = pd.merge(
         df_extraction, 
         df_diametres[['Numéro de compteur', 'Diametre']], 
@@ -24,12 +21,10 @@ def ajouter_diametres(df_extraction, df_diametres):
         how='left'
     )
     
-    # On peut supprimer la colonne 'Numéro de compteur' qui est en double après la fusion
     df_fusionne = df_fusionne.drop(columns=['Numéro de compteur'])
     
     return df_fusionne
 
-# Fonction pour l'outil de nettoyage de doublons
 def nettoyer_fichier(df):
     colonnes_requises = ["N° compteur", "Date", "Index"]
     if not all(col in df.columns for col in colonnes_requises):
