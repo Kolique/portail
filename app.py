@@ -150,7 +150,6 @@ elif page == "Nettoyage Doublons":
         except Exception as e:
             st.error(f"Oups, une erreur est survenue : {e}")
 
-# Page 3 : Comparaison de fichiers
 elif page == "Comparaison Fichiers":
     st.title("Outil de Comparaison de Fichiers")
     st.header("Trouver les compteurs manquants")
