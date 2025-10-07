@@ -3,7 +3,6 @@ import pandas as pd
 import io
 
 def ajouter_diametres(df_extraction, df_diametres):
-    # On vérifie que les colonnes nécessaires sont bien là
     if "N° compteur" not in df_extraction.columns:
         st.error("Le fichier d'extraction doit avoir une colonne 'N° compteur'.")
         return pd.DataFrame()
