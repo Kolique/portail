@@ -2,8 +2,6 @@ import streamlit as st
 import pandas as pd
 import io
 
-# --- Fonctions pour les outils ---
-
 def ajouter_diametres(df_extraction, df_diametres):
     # On vérifie que les colonnes nécessaires sont bien là
     if "N° compteur" not in df_extraction.columns:
@@ -41,7 +39,6 @@ def nettoyer_fichier(df):
     
     return df_final
 
-# Fonction pour l'outil de comparaison
 def comparer_fichiers(df1, df2):
     if 'N° compteur' not in df1.columns or 'N° compteur' not in df2.columns:
         st.error("La colonne 'N° compteur' doit exister dans les deux fichiers.")
@@ -54,15 +51,11 @@ def comparer_fichiers(df1, df2):
     
     return resultat
 
-# --- Interface de l'application ---
-
 st.set_page_config(page_title="Outils CSV", layout="wide")
 
-# Barre de navigation à gauche
 st.sidebar.title("Navigation")
 page = st.sidebar.radio("Choisis un outil :", ["Ajout Diamètre", "Nettoyage Doublons", "Comparaison Fichiers"])
 
-# Page 1 : Ajout de diamètre
 if page == "Ajout Diamètre":
     st.title("Outil d'Ajout de Diamètre")
     st.header("Enrichir un fichier avec les diamètres d'un autre")
@@ -111,8 +104,6 @@ if page == "Ajout Diamètre":
             except Exception as e:
                 st.error(f"Oups, une erreur est survenue : {e}")
 
-
-# Page 2 : Nettoyage de doublons
 elif page == "Nettoyage Doublons":
     st.title("Outil de Nettoyage CSV")
     st.header("1. Charger le fichier")
