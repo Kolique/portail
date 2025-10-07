@@ -72,11 +72,9 @@ if page == "Ajout Diamètre":
     if fichier_extraction and fichier_diametres:
         if st.button("Lancer l'ajout des diamètres", type="primary"):
             try:
-                # On s'assure que les numéros de compteur sont lus comme du texte pour éviter les erreurs
                 dtype_spec = {'N° compteur': str, 'Numéro de compteur': str, 'Réf. abonné': str}
                 df1 = pd.read_csv(fichier_extraction, sep=';', dtype=dtype_spec)
                 
-                # On vérifie le type du fichier des diamètres pour le lire correctement
                 if fichier_diametres.name.endswith('.csv'):
                     df2 = pd.read_csv(fichier_diametres, sep=';', dtype=dtype_spec)
                 else: # .xlsx
