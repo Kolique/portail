@@ -92,7 +92,7 @@ if page == "Ajout Diamètre":
                 csv_final = buffer.getvalue().encode('utf-8')
 
                 st.download_button(
-                    label="📥 Télécharger le fichier final (CSV)",
+                    label="Télécharger le fichier final (CSV)",
                     data=csv_final,
                     file_name="extraction_avec_diametres.csv",
                     mime="text/csv",
@@ -140,7 +140,7 @@ elif page == "Nettoyage Doublons":
                 csv_final = buffer.getvalue().encode('utf-8')
 
                 st.download_button(
-                    label="📥 Télécharger le résultat (CSV)",
+                    label="Télécharger le résultat (CSV)",
                     data=csv_final,
                     file_name="fichier_nettoye.csv",
                     mime="text/csv",
@@ -182,7 +182,7 @@ elif page == "Comparaison Fichiers":
                     csv_comp = buffer_comp.getvalue().encode('utf-8')
 
                     st.download_button(
-                        label="📥 Télécharger la liste (CSV)",
+                        label="Télécharger la liste (CSV)",
                         data=csv_comp,
                         file_name="compteurs_manquants.csv",
                         mime="text/csv",
